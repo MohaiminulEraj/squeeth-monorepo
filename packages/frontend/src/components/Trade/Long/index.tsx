@@ -14,7 +14,7 @@ import Confirmed, { ConfirmType } from '../Confirmed'
 import Cancelled from '../Cancelled'
 import TradeInfoItem from '../TradeInfoItem'
 import UniswapData from '../UniswapData'
-import { connectedWalletAtom, isTransactionFirstStepAtom } from 'src/state/wallet/atoms'
+import { connectedWalletAtom, isTransactionFirstStepAtom, supportedNetworkAtom } from 'src/state/wallet/atoms'
 import { useSelectWallet, useTransactionStatus, useWalletBalance } from 'src/state/wallet/hooks'
 import { useAtom, useAtomValue } from 'jotai'
 import { addressesAtom, isShortAtom } from 'src/state/positions/atoms'
@@ -270,6 +270,7 @@ const OpenLong: React.FC<BuyProps> = ({ activeStep = 0, open }) => {
   const tradeType = useAtomValue(tradeTypeAtom)
 
   const connected = useAtomValue(connectedWalletAtom)
+  const supportedNetwork = useAtomValue(supportedNetworkAtom)
   const isShort = useAtomValue(isShortAtom)
   const selectWallet = useSelectWallet()
   const { squeethAmount } = useComputeSwaps()
@@ -547,6 +548,7 @@ const OpenLong: React.FC<BuyProps> = ({ activeStep = 0, open }) => {
                     onClick={transact}
                     className={classes.amountInput}
                     disabled={
+                      !supportedNetwork ||
                       !!buyLoading ||
                       transactionInProgress ||
                       !!openError ||
@@ -560,7 +562,9 @@ const OpenLong: React.FC<BuyProps> = ({ activeStep = 0, open }) => {
                     }
                     id="open-long-submit-tx-btn"
                   >
-                    {buyLoading || transactionInProgress ? (
+                    {!supportedNetwork ? (
+                      'Unsupported Network'
+                    ) : buyLoading || transactionInProgress ? (
                       <CircularProgress color="primary" size="1.5rem" />
                     ) : longOpenPriceImpactErrorState ? (
                       'Buy Anyway'
@@ -623,6 +627,7 @@ const CloseLong: React.FC<BuyProps> = () => {
   const { allowance: squeethAllowance, approve: squeethApprove } = useUserAllowance(oSqueeth, swapRouter)
   const [isTxFirstStep, setIsTxFirstStep] = useAtom(isTransactionFirstStepAtom)
 
+  const supportedNetwork = useAtomValue(supportedNetworkAtom)
   const connected = useAtomValue(connectedWalletAtom)
   const selectWallet = useSelectWallet()
 
@@ -691,14 +696,14 @@ const CloseLong: React.FC<BuyProps> = () => {
       setSellLoading(false)
     }
   }, [
-    amount.toString(),
+    amount,
     resetEthTradeAmount,
     resetSqthTradeAmount,
     sell,
     setIsTxFirstStep,
     setTradeCompleted,
     setTradeSuccess,
-    squeethAllowance.toString(),
+    squeethAllowance,
     squeethApprove,
   ])
 
@@ -889,6 +894,7 @@ const CloseLong: React.FC<BuyProps> = () => {
                 onClick={sellAndClose}
                 className={classes.amountInput}
                 disabled={
+                  !supportedNetwork ||
                   !!sellLoading ||
                   transactionInProgress ||
                   !!closeError ||
@@ -903,7 +909,9 @@ const CloseLong: React.FC<BuyProps> = () => {
                 }
                 id="close-long-submit-tx-btn"
               >
-                {sellLoading || transactionInProgress ? (
+                {!supportedNetwork ? (
+                  'Unsupported Network'
+                ) : sellLoading || transactionInProgress ? (
                   <CircularProgress color="primary" size="1.5rem" />
                 ) : squeethAllowance.lt(amount) ? (
                   'Approve oSQTH (1/2)'
