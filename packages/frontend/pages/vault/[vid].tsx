@@ -25,7 +25,7 @@ import { useAtom, useAtomValue } from 'jotai'
 
 import ethLogo from '../../public/images/ethereum-eth.svg'
 import squeethLogo from '../../public/images/Squeeth.svg'
-import { AddButton, RemoveButton } from '@components/Button'
+import { AddButton, PrimaryButton, RemoveButton } from '@components/Button'
 import CollatRange from '@components/CollatRange'
 import NumberInput from '@components/Input/NumberInput'
 import Nav from '@components/Nav'
@@ -42,7 +42,7 @@ import { LinkButton } from '@components/Button'
 import { useERC721 } from '@hooks/contracts/useERC721'
 import { ACTIVE_POSITIONS_QUERY } from '@queries/uniswap/positionsQuery'
 import { positions, positionsVariables } from '@queries/uniswap/__generated__/positions'
-import { addressAtom, connectedWalletAtom } from 'src/state/wallet/atoms'
+import { addressAtom, connectedWalletAtom, supportedNetworkAtom } from 'src/state/wallet/atoms'
 import { useWalletBalance } from 'src/state/wallet/hooks'
 import { addressesAtom, collatPercentAtom, positionTypeAtom } from 'src/state/positions/atoms'
 import { useTokenBalance } from '@hooks/contracts/useTokenBalance'
@@ -286,6 +286,7 @@ const Component: React.FC = () => {
   const classes = useStyles()
   const router = useRouter()
   const { isRestricted } = useRestrictUser()
+  const supportedNetwork = useAtomValue(supportedNetworkAtom)
 
   const getCollatRatioAndLiqPrice = useGetCollatRatioAndLiqPrice()
   const getDebtAmount = useGetDebtAmount()
@@ -810,34 +811,40 @@ const Component: React.FC = () => {
                       id="collat-new-liqp"
                     />
                   </div>
-                  <div className={classes.managerActions}>
-                    <RemoveButton
-                      id="remove-collat-submit-tx-btn"
-                      className={classes.actionBtn}
-                      size="small"
-                      disabled={action !== VaultAction.REMOVE_COLLATERAL || txLoading || !!adjustCollatError}
-                      onClick={() => removeCollat(collateralBN.abs())}
-                    >
-                      {action === VaultAction.REMOVE_COLLATERAL && txLoading ? (
-                        <CircularProgress color="primary" size="1rem" />
-                      ) : (
-                        'Remove'
-                      )}
-                    </RemoveButton>
-                    <AddButton
-                      id="add-collat-submit-tx-btn"
-                      onClick={() => addCollat(collateralBN)}
-                      className={classes.actionBtn}
-                      size="small"
-                      disabled={action !== VaultAction.ADD_COLLATERAL || txLoading || !!adjustCollatError}
-                    >
-                      {action === VaultAction.ADD_COLLATERAL && txLoading ? (
-                        <CircularProgress color="primary" size="1rem" />
-                      ) : (
-                        'Add'
-                      )}
-                    </AddButton>
-                  </div>
+                  {!supportedNetwork ? (
+                    <PrimaryButton disabled variant="contained">
+                      Unsupported Network
+                    </PrimaryButton>
+                  ) : (
+                    <div className={classes.managerActions}>
+                      <RemoveButton
+                        id="remove-collat-submit-tx-btn"
+                        className={classes.actionBtn}
+                        size="small"
+                        disabled={action !== VaultAction.REMOVE_COLLATERAL || txLoading || !!adjustCollatError}
+                        onClick={() => removeCollat(collateralBN.abs())}
+                      >
+                        {action === VaultAction.REMOVE_COLLATERAL && txLoading ? (
+                          <CircularProgress color="primary" size="1rem" />
+                        ) : (
+                          'Remove'
+                        )}
+                      </RemoveButton>
+                      <AddButton
+                        id="add-collat-submit-tx-btn"
+                        onClick={() => addCollat(collateralBN)}
+                        className={classes.actionBtn}
+                        size="small"
+                        disabled={action !== VaultAction.ADD_COLLATERAL || txLoading || !!adjustCollatError}
+                      >
+                        {action === VaultAction.ADD_COLLATERAL && txLoading ? (
+                          <CircularProgress color="primary" size="1rem" />
+                        ) : (
+                          'Add'
+                        )}
+                      </AddButton>
+                    </div>
+                  )}
                 </div>
                 <div className={classes.managerItem}>
                   <div className={classes.managerItemHeader}>
@@ -930,34 +937,40 @@ const Component: React.FC = () => {
                       id="debt-new-liqp"
                     />
                   </div>
-                  <div className={classes.managerActions}>
-                    <RemoveButton
-                      id="burn-submit-tx-btn"
-                      onClick={() => burn(shortAmountBN)}
-                      className={classes.actionBtn}
-                      size="small"
-                      disabled={action !== VaultAction.BURN_SQUEETH || txLoading || !!adjustAmountError}
-                    >
-                      {action === VaultAction.BURN_SQUEETH && txLoading ? (
-                        <CircularProgress color="primary" size="1rem" />
-                      ) : (
-                        'Burn'
-                      )}
-                    </RemoveButton>
-                    <AddButton
-                      id="mint-submit-tx-btn"
-                      onClick={() => mint(shortAmountBN)}
-                      className={classes.actionBtn}
-                      size="small"
-                      disabled={action !== VaultAction.MINT_SQUEETH || txLoading || !!adjustAmountError}
-                    >
-                      {action === VaultAction.MINT_SQUEETH && txLoading ? (
-                        <CircularProgress color="primary" size="1rem" />
-                      ) : (
-                        'Mint'
-                      )}
-                    </AddButton>
-                  </div>
+                  {!supportedNetwork ? (
+                    <PrimaryButton disabled variant="contained">
+                      Unsupported Network
+                    </PrimaryButton>
+                  ) : (
+                    <div className={classes.managerActions}>
+                      <RemoveButton
+                        id="burn-submit-tx-btn"
+                        onClick={() => burn(shortAmountBN)}
+                        className={classes.actionBtn}
+                        size="small"
+                        disabled={action !== VaultAction.BURN_SQUEETH || txLoading || !!adjustAmountError}
+                      >
+                        {action === VaultAction.BURN_SQUEETH && txLoading ? (
+                          <CircularProgress color="primary" size="1rem" />
+                        ) : (
+                          'Burn'
+                        )}
+                      </RemoveButton>
+                      <AddButton
+                        id="mint-submit-tx-btn"
+                        onClick={() => mint(shortAmountBN)}
+                        className={classes.actionBtn}
+                        size="small"
+                        disabled={action !== VaultAction.MINT_SQUEETH || txLoading || !!adjustAmountError}
+                      >
+                        {action === VaultAction.MINT_SQUEETH && txLoading ? (
+                          <CircularProgress color="primary" size="1rem" />
+                        ) : (
+                          'Mint'
+                        )}
+                      </AddButton>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className={classes.manager}>
@@ -988,53 +1001,59 @@ const Component: React.FC = () => {
                       />
                     )}
                   </div>
-                  <div className={classes.managerActions} style={{ marginTop: '16px' }}>
-                    {isLPDeposited ? (
-                      <RemoveButton
-                        id="remove-lp-nft-submit-tx-btn"
-                        className={classes.actionBtn}
-                        size="small"
-                        disabled={txLoading}
-                        onClick={() => withdrawUniLPToken()}
-                      >
-                        {action === VaultAction.WITHDRAW_UNI_POSITION && txLoading ? (
-                          <CircularProgress color="primary" size="1rem" />
-                        ) : (
-                          'Remove'
-                        )}
-                      </RemoveButton>
-                    ) : null}
-                    {!isLPDeposited && action === VaultAction.APPROVE_UNI_POSITION ? (
-                      <AddButton
-                        id="approve-lp-nft-submit-tx-btn"
-                        onClick={() => approveUniLPToken(uniTokenToDeposit)}
-                        className={classes.actionBtn}
-                        size="small"
-                        disabled={action !== VaultAction.APPROVE_UNI_POSITION || txLoading}
-                      >
-                        {action === VaultAction.APPROVE_UNI_POSITION && txLoading ? (
-                          <CircularProgress color="primary" size="1rem" />
-                        ) : (
-                          'Approve'
-                        )}
-                      </AddButton>
-                    ) : null}
-                    {!isLPDeposited && action === VaultAction.DEPOSIT_UNI_POSITION ? (
-                      <AddButton
-                        id="deposit-lp-nft-submit-tx-btn"
-                        onClick={() => depositUniLPToken(uniTokenToDeposit)}
-                        className={classes.actionBtn}
-                        size="small"
-                        disabled={action !== VaultAction.DEPOSIT_UNI_POSITION || txLoading}
-                      >
-                        {action === VaultAction.DEPOSIT_UNI_POSITION && txLoading ? (
-                          <CircularProgress color="primary" size="1rem" />
-                        ) : (
-                          'Deposit'
-                        )}
-                      </AddButton>
-                    ) : null}
-                  </div>
+                  {!supportedNetwork ? (
+                    <PrimaryButton style={{ marginTop: 16 }} disabled variant="contained">
+                      Unsupported Network
+                    </PrimaryButton>
+                  ) : (
+                    <div className={classes.managerActions} style={{ marginTop: '16px' }}>
+                      {isLPDeposited ? (
+                        <RemoveButton
+                          id="remove-lp-nft-submit-tx-btn"
+                          className={classes.actionBtn}
+                          size="small"
+                          disabled={txLoading}
+                          onClick={() => withdrawUniLPToken()}
+                        >
+                          {action === VaultAction.WITHDRAW_UNI_POSITION && txLoading ? (
+                            <CircularProgress color="primary" size="1rem" />
+                          ) : (
+                            'Remove'
+                          )}
+                        </RemoveButton>
+                      ) : null}
+                      {!isLPDeposited && action === VaultAction.APPROVE_UNI_POSITION ? (
+                        <AddButton
+                          id="approve-lp-nft-submit-tx-btn"
+                          onClick={() => approveUniLPToken(uniTokenToDeposit)}
+                          className={classes.actionBtn}
+                          size="small"
+                          disabled={action !== VaultAction.APPROVE_UNI_POSITION || txLoading}
+                        >
+                          {action === VaultAction.APPROVE_UNI_POSITION && txLoading ? (
+                            <CircularProgress color="primary" size="1rem" />
+                          ) : (
+                            'Approve'
+                          )}
+                        </AddButton>
+                      ) : null}
+                      {!isLPDeposited && action === VaultAction.DEPOSIT_UNI_POSITION ? (
+                        <AddButton
+                          id="deposit-lp-nft-submit-tx-btn"
+                          onClick={() => depositUniLPToken(uniTokenToDeposit)}
+                          className={classes.actionBtn}
+                          size="small"
+                          disabled={action !== VaultAction.DEPOSIT_UNI_POSITION || txLoading}
+                        >
+                          {action === VaultAction.DEPOSIT_UNI_POSITION && txLoading ? (
+                            <CircularProgress color="primary" size="1rem" />
+                          ) : (
+                            'Deposit'
+                          )}
+                        </AddButton>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               </div>
             </>
