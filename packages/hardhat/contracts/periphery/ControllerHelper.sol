@@ -14,6 +14,7 @@ import {IController} from "../interfaces/IController.sol";
 import {IUniswapV3Pool} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {INonfungiblePositionManager} from "@uniswap/v3-periphery/contracts/interfaces/INonfungiblePositionManager.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // contract
 import {UniswapControllerHelper} from "./UniswapControllerHelper.sol";
@@ -407,6 +408,9 @@ contract ControllerHelper is UniswapControllerHelper, AaveControllerHelper, IERC
         uint256 _collateralToFlashloan,
         ControllerHelperDataType.RebalanceVaultNftParams[] calldata _params
     ) external payable {
+        // check ownership
+        require(IShortPowerPerp(ControllerHelperDiamondStorage.getAddressAtSlot(2)).ownerOf(_vaultId) == msg.sender);
+
         _flashLoan(
             ControllerHelperDiamondStorage.getAddressAtSlot(5),
             _collateralToFlashloan,
@@ -530,6 +534,11 @@ contract ControllerHelper is UniswapControllerHelper, AaveControllerHelper, IERC
                 data.collateralToWithdraw.add(data.collateralToFlashloan),
                 data.limitPriceEthPerPowerPerp
             );
+
+            if (address(this).balance > 0) {
+                // convert flashloaned amount + fee from ETH to WETH to prepare for payback
+                IWETH9(ControllerHelperDiamondStorage.getAddressAtSlot(5)).deposit{value: address(this).balance}();
+            }
         } else if (
             ControllerHelperDataType.CALLBACK_SOURCE(_callSource) ==
             ControllerHelperDataType.CALLBACK_SOURCE.FLASHLOAN_REBALANCE_VAULT_NFT
@@ -541,9 +550,6 @@ contract ControllerHelper is UniswapControllerHelper, AaveControllerHelper, IERC
                 _calldata,
                 (uint256, ControllerHelperDataType.RebalanceVaultNftParams[])
             );
-
-            // check ownership
-            require(IShortPowerPerp(ControllerHelperDiamondStorage.getAddressAtSlot(2)).ownerOf(vaultId) == _initiator);
 
             // deposit collateral into vault and withdraw LP NFT
             IController(ControllerHelperDiamondStorage.getAddressAtSlot(0)).deposit{value: _amount}(vaultId);
@@ -595,10 +601,15 @@ contract ControllerHelper is UniswapControllerHelper, AaveControllerHelper, IERC
                         isWethToken0
                     );
 
-                    if (decreaseLiquidityParam.liquidityPercentage == 1e18) {
-                        INonfungiblePositionManager(ControllerHelperDiamondStorage.getAddressAtSlot(6))
-                            .safeTransferFrom(address(this), msg.sender, decreaseLiquidityParam.tokenId);
-                    }
+                    // if LP position is not fully closed, redeposit into vault or send back to user
+                    ControllerHelperUtil.checkClosedLp(
+                        _initiator,
+                        ControllerHelperDiamondStorage.getAddressAtSlot(0),
+                        ControllerHelperDiamondStorage.getAddressAtSlot(6),
+                        vaultId,
+                        decreaseLiquidityParam.tokenId,
+                        decreaseLiquidityParam.liquidityPercentage
+                    );
                 } else if (
                     // this will execute if the use case is to mint in vault, deposit collateral in vault or mint + deposit
                     data[i].rebalanceVaultNftType == ControllerHelperDataType.RebalanceVaultNftType.MintIntoVault
@@ -654,6 +665,23 @@ contract ControllerHelper is UniswapControllerHelper, AaveControllerHelper, IERC
                         vaultId,
                         tokenId
                     );
+                } else if (
+                    data[i].rebalanceVaultNftType == ControllerHelperDataType.RebalanceVaultNftType.generalSwap
+                ) {
+                    ControllerHelperDataType.GeneralSwap memory swapParams = abi.decode(
+                        data[i].data,
+                        (ControllerHelperDataType.GeneralSwap)
+                    );
+
+                    _exactInFlashSwap(
+                        swapParams.tokenIn,
+                        swapParams.tokenOut,
+                        poolFee,
+                        swapParams.amountIn,
+                        swapParams.limitPriceEthPerPowerPerp.mul(swapParams.amountIn).div(1e18),
+                        uint8(ControllerHelperDataType.CALLBACK_SOURCE.GENERAL_SWAP),
+                        ""
+                    );
                 }
             }
 
@@ -675,7 +703,7 @@ contract ControllerHelper is UniswapControllerHelper, AaveControllerHelper, IERC
      */
     function _swapCallback(
         address _caller,
-        address, /*_tokenIn*/
+        address _tokenIn,
         address, /*_tokenOut*/
         uint24, /*_fee*/
         uint256 _amountToPay,
@@ -776,6 +804,12 @@ contract ControllerHelper is UniswapControllerHelper, AaveControllerHelper, IERC
                 ControllerHelperDiamondStorage.getAddressAtSlot(3),
                 _amountToPay
             );
+        } else if (
+            ControllerHelperDataType.CALLBACK_SOURCE(_callSource) ==
+            ControllerHelperDataType.CALLBACK_SOURCE.GENERAL_SWAP
+        ) {
+            IWETH9(ControllerHelperDiamondStorage.getAddressAtSlot(5)).deposit{value: address(this).balance}();
+            IERC20(_tokenIn).transfer(ControllerHelperDiamondStorage.getAddressAtSlot(3), _amountToPay);
         }
     }
 
